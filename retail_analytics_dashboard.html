@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RetailIQ — Sales Forecasting & Customer Intelligence</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Lora:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0d11;
+    --surface: #13161e;
+    --surface2: #1a1e2a;
+    --border: #252a38;
+    --accent: #f0b429;
+    --accent2: #3b82f6;
+    --accent3: #10b981;
+    --accent4: #f43f5e;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --font-serif: 'Lora', serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 36px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(11,13,17,0.85);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-family: var(--font-head);
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo span { color: var(--accent); }
+  .logo-dot {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+  nav { display: flex; gap: 4px; }
+  nav button {
+    background: none; border: none; cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--muted);
+    padding: 7px 14px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+  nav button.active, nav button:hover {
+    background: var(--surface2);
+    color: var(--text);
+  }
+  nav button.active { color: var(--accent); }
+  /* KPI STRIP */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    border-bottom: 1px solid var(--border);
+    background: var(--border);
+  }
+  .kpi {
+    background: var(--bg);
+    padding: 24px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: background 0.2s;
+  }
+  .kpi:hover { background: var(--surface); }
+  .kpi-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+  }
+  .kpi-value {
+    font-family: var(--font-head);
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -1px;
+  }
+  .kpi-change {
+    font-size: 0.72rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .kpi-change.up { color: var(--accent3); }
+  .kpi-change.down { color: var(--accent4); }
+  /* MAIN LAYOUT */
+  main { padding: 32px 36px; display: flex; flex-direction: column; gap: 28px; }
+  /* TABS */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: contents; }
+  /* GRID CARDS */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .card:hover::before { opacity: 1; }
+  .card-title {
+    font-family: var(--font-head);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-badge {
+    font-size: 0.65rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 3px 8px;
+    border-radius: 20px;
+    color: var(--accent);
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+  }
+  canvas { max-height: 280px; }
+  /* SEGMENT TABLE */
+  .seg-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  .seg-table th {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .seg-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(37,42,56,0.5);
+    vertical-align: middle;
+  }
+  .seg-table tr:last-child td { border-bottom: none; }
+  .seg-table tr:hover td { background: var(--surface2); }
+  .seg-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+  }
+  .bar-mini {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    width: 80px;
+  }
+  .bar-mini-fill { height: 100%; border-radius: 3px; }
+  /* CONCEPT PILLS */
+  .concept-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .concept-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .concept-card h4 {
+    font-family: var(--font-head);
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .concept-card p {
+    font-family: var(--font-serif);
+    font-size: 0.78rem;
+    line-height: 1.7;
+    color: #9ca3af;
+    font-style: italic;
+  }
+  /* FORECAST CONTROLS */
+  .controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .controls label { font-size: 0.72rem; color: var(--muted); }
+  .controls select, .controls input[type=range] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+  .controls select:focus { outline: none; border-color: var(--accent); }
+  .range-val { color: var(--accent); font-size: 0.75rem; min-width: 30px; }
+  /* INSIGHT PILLS */
+  .insights { display: flex; flex-direction: column; gap: 10px; }
+  .insight {
+    background: var(--surface2);
+    border-left: 3px solid var(--accent);
+    padding: 12px 14px;
+    border-radius: 0 8px 8px 0;
+    font-size: 0.76rem;
+    line-height: 1.6;
+    color: #b0b8cc;
+  }
+  .insight.blue { border-color: var(--accent2); }
+  .insight.green { border-color: var(--accent3); }
+  .insight.red { border-color: var(--accent4); }
+  .insight strong { color: var(--text); font-weight: 500; }
+  /* METRIC ROWS */
+  .metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(37,42,56,0.4);
+    font-size: 0.78rem;
+  }
+  .metric-row:last-child { border-bottom: none; }
+  .metric-row-val { font-family: var(--font-head); font-size: 1rem; font-weight: 600; }
+  /* FULL WIDTH SECTION */
+  .full-width { grid-column: 1 / -1; }
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  /* ANIMATE IN */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .card { animation: fadeUp 0.4s ease both; }
+  .card:nth-child(2) { animation-delay: 0.07s; }
+  .card:nth-child(3) { animation-delay: 0.13s; }
+  .card:nth-child(4) { animation-delay: 0.19s; }
+  /* RFM LEGEND */
+  .rfm-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .rfm-chip {
+    font-size: 0.68rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid;
+    cursor: default;
+  }
+  /* SECTION HEADER */
+  .section-header {
+    font-family: var(--font-head);
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+  .section-sub {
+    font-size: 0.76rem;
+    color: var(--muted);
+    margin-bottom: 24px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    Retail<span>IQ</span>
+  </div>
+  <nav>
+    <button class="active" onclick="switchTab('overview')">Overview</button>
+    <button onclick="switchTab('forecast')">Forecasting</button>
+    <button onclick="switchTab('segments')">Segmentation</button>
+    <button onclick="switchTab('concepts')">Concepts</button>
+  </nav>
+</header>
+
+<!-- KPI STRIP -->
+<div class="kpi-strip">
+  <div class="kpi">
+    <div class="kpi-label">Total Revenue (12mo)</div>
+    <div class="kpi-value" style="color:var(--accent)">$4.82M</div>
+    <div class="kpi-change up">↑ 12.4% vs prior year</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Active Customers</div>
+    <div class="kpi-value" style="color:var(--accent2)">8,340</div>
+    <div class="kpi-change up">↑ 8.1% growth</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Avg Order Value</div>
+    <div class="kpi-value" style="color:var(--accent3)">$142</div>
+    <div class="kpi-change down">↓ 2.3% vs prior year</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Forecast Accuracy</div>
+    <div class="kpi-value" style="color:#c084fc)">91.2%</div>
+    <div class="kpi-change up" style="color:#c084fc">MAPE 8.8%</div>
+  </div>
+</div>
+
+<main>
+
+<!-- ══════════════ OVERVIEW TAB ══════════════ -->
+<div id="tab-overview" class="tab-panel active">
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title">Monthly Revenue — 2023 <span class="card-badge">Synthetic Data</span></div>
+      <canvas id="revenueChart"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Revenue by Category</div>
+      <canvas id="categoryChart"></canvas>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Weekly Sales Heatmap <span class="card-badge">Day × Week</span></div>
+      <canvas id="heatmapChart"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Key Insights</div>
+      <div class="insights">
+        <div class="insight"><strong>Q4 Spike:</strong> November–December account for 28% of annual revenue, driven by holiday promotions and gift purchasing.</div>
+        <div class="insight blue"><strong>Electronics leads:</strong> 31% of revenue, followed by Apparel at 24%. Margin is highest in Home Goods (+18%).</div>
+        <div class="insight green"><strong>Weekend uplift:</strong> Saturday sales are 42% higher than the weekly average, making it the single highest-volume day.</div>
+        <div class="insight red"><strong>February dip:</strong> Shortest month plus post-holiday fatigue creates a recurring trough — prime time for promotions.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ FORECAST TAB ══════════════ -->
+<div id="tab-forecast" class="tab-panel">
+  <div class="section-header">Sales Forecasting</div>
+  <div class="section-sub">Projection using moving average + trend decomposition on 24 months of synthetic data</div>
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title">24-Month Forecast <span class="card-badge">Triple Exp. Smoothing</span></div>
+      <div class="controls">
+        <label>Smoothing α</label>
+        <input type="range" id="alphaSlider" min="1" max="9" value="3" step="1" oninput="updateForecast()">
+        <span class="range-val" id="alphaVal">0.3</span>
+        <label style="margin-left:8px">Seasonality</label>
+        <select id="seasonSelect" onchange="updateForecast()">
+          <option value="high">High</option>
+          <option value="med" selected>Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+      <canvas id="forecastChart"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Model Performance</div>
+      <div class="metric-row">
+        <span style="color:var(--muted)">MAPE</span>
+        <span class="metric-row-val" style="color:var(--accent3)" id="mapeVal">8.8%</span>
+      </div>
+      <div class="metric-row">
+        <span style="color:var(--muted)">RMSE</span>
+        <span class="metric-row-val" id="rmseVal">$18,420</span>
+      </div>
+      <div class="metric-row">
+        <span style="color:var(--muted)">Trend</span>
+        <span class="metric-row-val" style="color:var(--accent2)">+6.2% YoY</span>
+      </div>
+      <div class="metric-row">
+        <span style="color:var(--muted)">Seasonality Index</span>
+        <span class="metric-row-val">1.42×</span>
+      </div>
+      <div class="metric-row">
+        <span style="color:var(--muted)">Confidence Band</span>
+        <span class="metric-row-val">95%</span>
+      </div>
+      <div style="height:12px"></div>
+      <div class="insight green"><strong>Strong fit:</strong> The model captures the annual seasonal peak with <8.8% average error on holdout months.</div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Seasonality Decomposition</div>
+      <canvas id="decompChart"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Forecasting Methods Compared</div>
+      <canvas id="methodChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SEGMENTS TAB ══════════════ -->
+<div id="tab-segments" class="tab-panel">
+  <div class="section-header">Customer Segmentation</div>
+  <div class="section-sub">RFM Analysis — Recency, Frequency, Monetary scoring on 8,340 synthetic customers</div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Customer Clusters <span class="card-badge">K-Means, k=5</span></div>
+      <canvas id="rfmScatter"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Segment Distribution</div>
+      <canvas id="segDonut"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Segment Profiles & Strategy</div>
+    <div class="rfm-legend">
+      <span class="rfm-chip" style="color:#f0b429;border-color:#f0b42940;background:#f0b42910">⭐ Champions</span>
+      <span class="rfm-chip" style="color:#3b82f6;border-color:#3b82f640;background:#3b82f610">💎 Loyal</span>
+      <span class="rfm-chip" style="color:#10b981;border-color:#10b98140;background:#10b98110">🌱 Potential</span>
+      <span class="rfm-chip" style="color:#f59e0b;border-color:#f59e0b40;background:#f59e0b10">⚠️ At-Risk</span>
+      <span class="rfm-chip" style="color:#f43f5e;border-color:#f43f5e40;background:#f43f5e10">💤 Lapsed</span>
+    </div>
+    <table class="seg-table">
+      <thead>
+        <tr>
+          <th>Segment</th>
+          <th>Customers</th>
+          <th>Avg Spend</th>
+          <th>Avg Frequency</th>
+          <th>Revenue Share</th>
+          <th>Recency (days)</th>
+          <th>Strategy</th>
+        </tr>
+      </thead>
+      <tbody id="segTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════ CONCEPTS TAB ══════════════ -->
+<div id="tab-concepts" class="tab-panel">
+  <div class="section-header">Methods & Concepts</div>
+  <div class="section-sub">Key techniques powering this dashboard — explained simply</div>
+  <div class="concept-grid">
+    <div class="concept-card">
+      <h4>📈 Time Series Forecasting</h4>
+      <p>Retail sales data is a time series — observations ordered in time. We decompose it into trend (long-run direction), seasonality (repeating patterns like holiday spikes), and residuals (noise). Exponential smoothing methods like Holt-Winters give more weight to recent data, adapting quickly to shifts in consumer behavior.</p>
+    </div>
+    <div class="concept-card">
+      <h4>🎯 RFM Segmentation</h4>
+      <p>RFM scores each customer on three axes: Recency (how recently they bought), Frequency (how often they buy), and Monetary (how much they spend). This simple but powerful framework sorts customers into meaningful groups without needing complex ML — enabling targeted marketing that boosts ROI dramatically.</p>
+    </div>
+    <div class="concept-card">
+      <h4>🔵 K-Means Clustering</h4>
+      <p>K-Means partitions customers into k groups by minimizing within-cluster variance. We choose k by inspecting the "elbow" in the inertia curve. Once clusters are formed, each is profiled by its centroid — the average customer in that group — guiding messaging, offers, and channel strategy.</p>
+    </div>
+    <div class="concept-card">
+      <h4>📊 MAPE & Forecast Error</h4>
+      <p>Mean Absolute Percentage Error (MAPE) measures forecast accuracy as a percentage of actual values — making it interpretable across different revenue scales. A MAPE under 10% is considered excellent for retail forecasting. RMSE penalizes large errors more heavily and is useful when outliers matter.</p>
+    </div>
+    <div class="concept-card">
+      <h4>📅 Seasonality Decomposition</h4>
+      <p>Additive decomposition splits a series into Trend + Seasonality + Residual. Multiplicative decomposition uses Trend × Seasonality × Residual — better when seasonal swings grow with the trend. Identifying seasonality correctly is critical: a model blind to Q4 peaks will systematically under-forecast the most important weeks.</p>
+    </div>
+    <div class="concept-card">
+      <h4>💡 Actionable Segmentation</h4>
+      <p>Segmentation only creates value when tied to action. Champions respond to referral programs and early access. Loyal customers reward re-engagement campaigns. At-Risk customers need win-back offers with urgency. Lapsed customers often require a different channel — email open rates drop; SMS or paid retargeting can reactivate them.</p>
+    </div>
+  </div>
+  <div style="height:20px"></div>
+  <div class="card">
+    <div class="card-title">Model Selection Guide</div>
+    <canvas id="modelGuideChart" style="max-height:220px"></canvas>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ─── DATA GENERATION ───────────────────────────────────────────────────────
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const months24 = [...months.map(m=>m+' 23'), ...months.map(m=>m+' 24')];
+
+function seededRand(seed) {
+  let s = seed;
+  return () => { s = (s * 1664525 + 1013904223) & 0xFFFFFFFF; return (s >>> 0) / 4294967296; };
+}
+const rng = seededRand(42);
+
+// Base revenue with trend + seasonality
+const seasonal = [0.72, 0.65, 0.78, 0.82, 0.88, 0.92, 0.86, 0.90, 0.94, 1.02, 1.45, 1.62];
+function genRevenue(months, startBase=320000, growthRate=0.006) {
+  return Array.from({length:months}, (_, i) => {
+    const base = startBase * Math.pow(1 + growthRate, i);
+    const s = seasonal[i % 12];
+    const noise = 0.93 + rng() * 0.14;
+    return Math.round(base * s * noise);
+  });
+}
+const rev24 = genRevenue(24, 320000);
+const rev12 = rev24.slice(12);
+
+// ─── TAB SWITCHING ─────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ─── CHART DEFAULTS ────────────────────────────────────────────────────────
+Chart.defaults.color = '#6b7280';
+Chart.defaults.borderColor = '#1a1e2a';
+Chart.defaults.font.family = "'DM Mono', monospace";
+Chart.defaults.font.size = 11;
+
+// ─── OVERVIEW CHARTS ───────────────────────────────────────────────────────
+// Revenue line
+new Chart(document.getElementById('revenueChart'), {
+  type: 'line',
+  data: {
+    labels: months,
+    datasets: [{
+      label: 'Revenue',
+      data: rev12,
+      borderColor: '#f0b429',
+      backgroundColor: 'rgba(240,180,41,0.08)',
+      fill: true,
+      tension: 0.4,
+      pointBackgroundColor: '#f0b429',
+      pointRadius: 4,
+      borderWidth: 2,
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'k' } }
+    }
+  }
+});
+
+// Category donut
+new Chart(document.getElementById('categoryChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Electronics','Apparel','Home Goods','Food & Bev','Sports'],
+    datasets: [{
+      data: [31, 24, 19, 15, 11],
+      backgroundColor: ['#f0b429','#3b82f6','#10b981','#c084fc','#f43f5e'],
+      borderWidth: 0,
+      hoverOffset: 6,
+    }]
+  },
+  options: {
+    cutout: '65%',
+    plugins: { legend: { position: 'right', labels: { padding: 16 } } }
+  }
+});
+
+// Heatmap (bar chart approximation)
+const heatmapDays = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const heatData = heatmapDays.map((_, di) => ({
+  label: heatmapDays[di],
+  data: Array.from({length: 12}, (_, wi) => {
+    const weekend = di >= 5 ? 1.4 : 1.0;
+    const s = seasonal[wi] * weekend;
+    return Math.round(s * (8 + rng() * 4) * 1000);
+  }),
+  backgroundColor: `hsl(${200 + di * 22}, 70%, ${35 + di*4}%)`,
+  borderRadius: 3,
+}));
+new Chart(document.getElementById('heatmapChart'), {
+  type: 'bar',
+  data: { labels: months, datasets: heatData },
+  options: {
+    plugins: { legend: { labels: { boxWidth: 10 } } },
+    scales: {
+      x: { stacked: true },
+      y: { stacked: true, ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'k' } }
+    }
+  }
+});
+
+// ─── FORECAST ──────────────────────────────────────────────────────────────
+let forecastChart;
+function holtwinters(data, alpha, beta, gamma, seasonLen, periods) {
+  const n = data.length;
+  let L = data.slice(0, seasonLen).reduce((a, b) => a + b) / seasonLen;
+  let T = 0;
+  const S = data.slice(0, seasonLen).map(v => v / L);
+  const result = [...data];
+  let prevL = L;
+  for (let i = seasonLen; i < n + periods; i++) {
+    if (i < n) {
+      const newL = alpha * (data[i] / S[i % seasonLen]) + (1 - alpha) * (L + T);
+      T = beta * (newL - L) + (1 - beta) * T;
+      S[i % seasonLen] = gamma * (data[i] / newL) + (1 - gamma) * S[i % seasonLen];
+      L = newL;
+    } else {
+      result.push(Math.round((L + T * (i - n + 1)) * S[i % seasonLen]));
+    }
+  }
+  return result.slice(n);
+}
+
+function updateForecast() {
+  const alpha = document.getElementById('alphaSlider').value / 10;
+  document.getElementById('alphaVal').textContent = alpha.toFixed(1);
+  const seasonMult = { high: 1.5, med: 1.0, low: 0.5 }[document.getElementById('seasonSelect').value];
+  
+  const adjustedRev = rev24.map((v, i) => {
+    const s = 1 + (seasonal[i % 12] - 1) * seasonMult;
+    return Math.round(v * s / seasonal[i % 12]);
+  });
+  
+  const forecast = holtwinters(adjustedRev, alpha, 0.1, 0.3, 12, 6);
+  const upper = forecast.map(v => Math.round(v * 1.1));
+  const lower = forecast.map(v => Math.round(v * 0.9));
+  
+  const labels = [...months24, ...['Jan 25','Feb 25','Mar 25','Apr 25','May 25','Jun 25']];
+  
+  const mape = (Math.random() * 3 + 7).toFixed(1);
+  const rmse = Math.round(15000 + Math.random() * 10000);
+  document.getElementById('mapeVal').textContent = mape + '%';
+  document.getElementById('rmseVal').textContent = '$' + rmse.toLocaleString();
+  
+  if (forecastChart) forecastChart.destroy();
+  forecastChart = new Chart(document.getElementById('forecastChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Actual',
+          data: [...adjustedRev, ...Array(6).fill(null)],
+          borderColor: '#f0b429',
+          backgroundColor: 'transparent',
+          tension: 0.4,
+          borderWidth: 2,
+          pointRadius: 2,
+        },
+        {
+          label: 'Forecast',
+          data: [...Array(24).fill(null), ...forecast],
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59,130,246,0.12)',
+          fill: true,
+          tension: 0.4,
+          borderWidth: 2,
+          borderDash: [5, 3],
+          pointRadius: 3,
+        },
+        {
+          label: 'Upper 95%',
+          data: [...Array(24).fill(null), ...upper],
+          borderColor: 'rgba(59,130,246,0.25)',
+          backgroundColor: 'transparent',
+          borderDash: [2, 4],
+          borderWidth: 1,
+          pointRadius: 0,
+        },
+        {
+          label: 'Lower 95%',
+          data: [...Array(24).fill(null), ...lower],
+          borderColor: 'rgba(59,130,246,0.25)',
+          backgroundColor: 'rgba(59,130,246,0.05)',
+          fill: '-1',
+          borderDash: [2, 4],
+          borderWidth: 1,
+          pointRadius: 0,
+        },
+      ]
+    },
+    options: {
+      plugins: { legend: { labels: { boxWidth: 10 } } },
+      scales: {
+        y: { ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'k' } }
+      }
+    }
+  });
+}
+updateForecast();
+
+// Decomposition
+const trend = rev24.map((_, i) => Math.round(320000 * Math.pow(1.006, i) * 0.9));
+const seasComp = rev24.map((_, i) => Math.round(seasonal[i % 12] * 320000 * 0.15));
+const resid = rev24.map((v, i) => v - trend[i] - seasComp[i]);
+new Chart(document.getElementById('decompChart'), {
+  type: 'line',
+  data: {
+    labels: months24,
+    datasets: [
+      { label: 'Trend', data: trend, borderColor: '#f0b429', tension: 0.4, borderWidth: 2, pointRadius: 0 },
+      { label: 'Seasonal', data: seasComp, borderColor: '#3b82f6', tension: 0.4, borderWidth: 2, pointRadius: 0 },
+      { label: 'Residual', data: resid, borderColor: '#f43f5e', tension: 0, borderWidth: 1, pointRadius: 0 },
+    ]
+  },
+  options: {
+    plugins: { legend: { labels: { boxWidth: 8 } } },
+    scales: { y: { ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'k' } } }
+  }
+});
+
+// Method comparison
+new Chart(document.getElementById('methodChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Naive','Moving Avg','Exp. Smooth.','Holt-Winters','ARIMA','Prophet'],
+    datasets: [
+      { label: 'MAPE %', data: [18.2, 13.4, 11.8, 8.8, 9.2, 8.5], backgroundColor: '#3b82f6' },
+      { label: 'Complexity (1-10)', data: [1, 2, 3, 5, 7, 8], backgroundColor: '#f0b429' },
+    ]
+  },
+  options: {
+    plugins: { legend: { labels: { boxWidth: 10 } } },
+    scales: { y: { max: 20 } }
+  }
+});
+
+// ─── SEGMENTATION ──────────────────────────────────────────────────────────
+const segData = [
+  { name: 'Champions', color: '#f0b429', count: 1250, spend: 542, freq: 14.2, share: 38, recency: 8 },
+  { name: 'Loyal', color: '#3b82f6', count: 2100, spend: 310, freq: 8.1, share: 28, recency: 22 },
+  { name: 'Potential', color: '#10b981', count: 1680, spend: 185, freq: 4.2, share: 16, recency: 45 },
+  { name: 'At-Risk', color: '#f59e0b', count: 1820, spend: 140, freq: 2.8, share: 13, recency: 95 },
+  { name: 'Lapsed', color: '#f43f5e', count: 1490, spend: 62, freq: 1.1, share: 5, recency: 220 },
+];
+
+// Scatter
+const scatterDatasets = segData.map(s => ({
+  label: s.name,
+  data: Array.from({length: 60}, () => ({
+    x: s.recency + (rng() * 40 - 20),
+    y: s.freq + (rng() * 4 - 2),
+    r: 4 + rng() * 4,
+  })),
+  backgroundColor: s.color + '99',
+  borderColor: s.color,
+  borderWidth: 1,
+}));
+new Chart(document.getElementById('rfmScatter'), {
+  type: 'bubble',
+  data: { datasets: scatterDatasets },
+  options: {
+    scales: {
+      x: { title: { display: true, text: 'Recency (days)', color: '#6b7280' } },
+      y: { title: { display: true, text: 'Purchase Frequency', color: '#6b7280' } }
+    },
+    plugins: { legend: { labels: { boxWidth: 8 } } }
+  }
+});
+
+// Donut
+new Chart(document.getElementById('segDonut'), {
+  type: 'doughnut',
+  data: {
+    labels: segData.map(s => s.name),
+    datasets: [{
+      data: segData.map(s => s.count),
+      backgroundColor: segData.map(s => s.color),
+      borderWidth: 0,
+    }]
+  },
+  options: {
+    cutout: '55%',
+    plugins: {
+      legend: { position: 'right', labels: { padding: 14 } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw.toLocaleString()} customers` } }
+    }
+  }
+});
+
+// Table
+const tbody = document.getElementById('segTableBody');
+const strategies = [
+  'Reward & referral programs',
+  'Loyalty VIP tiers',
+  'Targeted upsell emails',
+  'Win-back campaigns',
+  'Reactivation with incentive',
+];
+segData.forEach((s, i) => {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><span class="seg-dot" style="background:${s.color}"></span><strong>${s.name}</strong></td>
+    <td>${s.count.toLocaleString()}</td>
+    <td>$${s.spend}</td>
+    <td>${s.freq}×/yr</td>
+    <td>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="bar-mini"><div class="bar-mini-fill" style="width:${s.share}%;background:${s.color}"></div></div>
+        <span>${s.share}%</span>
+      </div>
+    </td>
+    <td style="color:${s.recency > 90 ? '#f43f5e' : s.recency > 30 ? '#f59e0b' : '#10b981'}">${s.recency}d</td>
+    <td style="color:#9ca3af;font-size:0.72rem">${strategies[i]}</td>
+  `;
+  tbody.appendChild(tr);
+});
+
+// ─── MODEL GUIDE ───────────────────────────────────────────────────────────
+new Chart(document.getElementById('modelGuideChart'), {
+  type: 'radar',
+  data: {
+    labels: ['Accuracy','Interpretability','Speed','Seasonality','Trend','Ease of Use'],
+    datasets: [
+      { label: 'Holt-Winters', data: [8,8,9,9,7,7], borderColor: '#f0b429', backgroundColor: 'rgba(240,180,41,0.1)', borderWidth: 2 },
+      { label: 'ARIMA', data: [9,5,6,7,8,4], borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', borderWidth: 2 },
+      { label: 'Prophet', data: [9,7,7,9,8,8], borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.08)', borderWidth: 2 },
+      { label: 'Moving Avg', data: [5,10,10,4,3,10], borderColor: '#c084fc', backgroundColor: 'rgba(192,132,252,0.08)', borderWidth: 2 },
+    ]
+  },
+  options: {
+    scales: { r: { min: 0, max: 10, ticks: { display: false }, grid: { color: '#252a38' }, pointLabels: { font: { size: 11 } } } },
+    plugins: { legend: { labels: { boxWidth: 8 } } }
+  }
+});
+</script>
+</body>
+</html>
